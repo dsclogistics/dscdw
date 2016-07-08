@@ -87,4 +87,19 @@ public class DW {
 	     return rb;   
 	  
 	}
+
+//**************** DSC WMS Metric status
+@Path("/loadstatus")
+@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response LoadStatus(JSONObject inputJsonObj) throws Exception {
+	 Response rb = null;	 
+	java.util.Date date= new java.util.Date();
+	java.util.Date sdate=new Timestamp(date.getTime());  
+	LoadStatus lstatus  = new LoadStatus();
+	  rb=lstatus.LoadStatus(inputJsonObj);
+	     return rb;   
+	  
+	}
 }
