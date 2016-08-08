@@ -20,9 +20,13 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashSet;
+import java.util.Set;
 import java.sql.ResultSetMetaData;
 
 import javax.naming.Context;
@@ -117,7 +121,7 @@ public class DSCWMSVolume  {
 					// TODO Auto-generated catch block
 					//e.printStackTrace();
 	                String msg="DataWarehouse DB Connection Failed.";
-	                sb.append("{\"result\":\"FAILED\",\"resultCode\":200,\"message\":\""+msg+"\"");
+	                sb.append("{\"result\":\"FAILED\",\"resultCode\":200,\"message\":\""+msg+"\"}");
 	   	          rb=Response.ok(sb.toString()).build();
 	   	          return rb;
 				}
@@ -170,27 +174,50 @@ public class DSCWMSVolume  {
 			         BigDecimal thismonth =new BigDecimal(0);			         
 			         BigDecimal volume =new BigDecimal(0);	
 			         BigDecimal avgvolume =new BigDecimal(0);				         
-			         BigDecimal cnt =new BigDecimal(0);				         
-			       
+			         BigDecimal cnt =new BigDecimal(0);		
+			         
+			         String[] strMonths = new String [300];
+	 			      //  if ( Arrays.asList(dtarray).contains("yourValue")) {dtarray[1]="Y";
+			         ArrayList<String> dateList = new ArrayList<String>();
+
 					int numColumns = rsmd.getColumnCount(); 
 					MathContext mc = new MathContext(4);
                     String mthyear="";
                     int avgcnt=0;
                     rcount=0;
+                    int x=0;
+                    String fndarray="N";
+                    boolean contains = false;
+                    String ipdata="";
                     
                     while (rs.next())
                     {
                     	bldid=rs.getString("LCBLD").trim();	
                     	 // first time you are here lookup xref from Metric via API call.
                     	 if (rcount == 0)
-   					  		{               		 					  
+   					  		{   
+                    		    ipdata= rs.getString("MONTH_YEAR").replace(' ','-').trim();
+                    		    if (!ipdata.equals(null)) {dateList.add(ipdata);    x++;}
                     		 	docall();
                     		 	wrklcbld=bldid;
                     		 	wrkdscmtrclcbldid = dscmtrclcbldid;
                     		 //	System.out.println("First record. Saved bld:"+wrklcbld +" source bld:"+bldid +" lcbddid:"+dscmtrclcbldid +"Foundid is:"+foundid);
    	    		            } 
                     	 rcount++;
-                    	 
+                    	   //iterate the String array
+                    	  //   System.out.print(" About to search list. X is now:"+x);
+                               ipdata=rs.getString("MONTH_YEAR").replace(' ','-').trim(); 
+                               
+                               //Load the list into a hashSet
+                               Set<String> set = new HashSet<String>(dateList);
+                               if (!set.contains(ipdata))
+                               {      
+                         	          dateList.add(ipdata);
+                        	           x++;
+                        	        }
+                        	     
+                        //	   System.out.println(". Completed Searching for:"+ipdata +" Variable X is now:"+x);
+
                     	 // for every record if the LCBLD changes do the restcall
                     	 if (wrklcbld != bldid)
                     	 {
@@ -198,10 +225,13 @@ public class DSCWMSVolume  {
                  		 	 
                     	 }
                  		 	 // if xref ID changed then dump the data in memory to a Json and rest wrk data areas
-                 		  if ((!wrkdscmtrclcbldid.equals(dscmtrclcbldid)  && avgcnt > 0))
+                 		  if ((!wrkdscmtrclcbldid.equals(dscmtrclcbldid)  && x > 0))
                  		  {
                  			// System.out.print("**** Break in Xref. Old one was:"+wrkdscmtrclcbldid +" New one is:"+dscmtrclcbldid);
+                 			   avgcnt=x;
+                 			    if (avgcnt == 0) avgcnt=1;
                  		 	    cnt = new BigDecimal(avgcnt);
+                 		 	    
                  		 	//	 System.out.println(" Divide thismonth:"+thismonth +" thruput value:"+thruput +" divide count is:"+cnt);
                  		 		avgvolume=thruput.divide(cnt,2, RoundingMode.HALF_UP);
                  		 	    volume=(thismonth.subtract((thruput.divide(cnt,2, RoundingMode.HALF_UP))));
@@ -214,23 +244,38 @@ public class DSCWMSVolume  {
        						    obj1.put("Count", avgcnt);
     						    obj1.put("thismonth", thismonth);
     						    obj1.put("processYYMM", thismy);
-       						    obj1.put("AvgVolume", volume);
+       						    obj1.put("PeriodValue", volume);
                                 jsona.put(obj1); 
                  		 		wrkdscmtrclcbldid = dscmtrclcbldid;
                  		 		thruput.equals(blkthruput);
                  		 		avgcnt=0;
+                 		 		x=1;
+                 		 		dateList.clear();
+                 		 		ipdata=rs.getString("MONTH_YEAR").replace(' ','-').trim();
+                 		 		dateList.add(ipdata);
                  		   }
                  		 wrklcbld=bldid;
+                 		 try
+                 		 {
                  		  if (foundid.equals("Y"))
                  		  {
+                 			 fndarray="";
         					 avgcnt++;
-    						 mthyear=rs.getString("MONTH_YEAR").replace(' ','-');
+    						 mthyear=rs.getString("MONTH_YEAR").replace(' ','-').trim();
+     						 
+    						// if (!Arrays.asList(dtarray).contains(mthyear)) {dtarray.add(mthyear.toString());x++;}   						 
     					 	// System.out.println("Compare input month:"+mthyear +" with requested date:"+thismy);
     						 if (mthyear.equals(thismy)) thismonth=rs.getBigDecimal("THROUGHPUT");
     							 
     						 long tput=(rs.getLong("THROUGHPUT"));						  
     						 thruput=thruput.add(rs.getBigDecimal("THROUGHPUT"));
-                           }
+                 		  }
+                 		 }
+                 		  catch (Exception e)
+                 		  {
+                 			 System.out.println("error is:"+e.getMessage());
+                 		  }
+                            
                     	 
                     } // end of while loop
                     
@@ -239,13 +284,18 @@ public class DSCWMSVolume  {
 			             stmt.close();
 			             if (conn != null) { conn.close();}
 			            
-			             if (avgcnt > 0)
+			             if (x > 0)
 			             {
-                 			 System.out.print("**** Last Break in Xref. Old one was:"+wrkdscmtrclcbldid +" New one is:"+dscmtrclcbldid);
-              		 	    cnt = new BigDecimal(avgcnt);
-              		 		 System.out.println(" Divide thismonth:"+thismonth +" thruput value:"+thruput +" divide count is:"+cnt); 
-              		 	    volume=(thismonth.subtract((thruput.divide(cnt,2, RoundingMode.HALF_UP))));
-              		 	   // System.out.println(" Volume is:"+volume);
+                 			// System.out.print("**** Last Break in Xref. Old one was:"+wrkdscmtrclcbldid +" New one is:"+dscmtrclcbldid);
+                 			  avgcnt=x;
+               			    if (avgcnt == 0) avgcnt=1;
+               		 	    cnt = new BigDecimal(avgcnt);
+               		 	    
+               		 	//	 System.out.println(" Divide thismonth:"+thismonth +" thruput value:"+thruput +" divide count is:"+cnt);
+               		 		avgvolume=thruput.divide(cnt,2, RoundingMode.HALF_UP);
+               		 	    volume=(thismonth.subtract((thruput.divide(cnt,2, RoundingMode.HALF_UP))));
+               		 	    volume=volume.divide(avgvolume,2, RoundingMode.HALF_UP);
+               		 	//    System.out.println(" Volume is:"+volume);
     						    obj1 = new JSONObject();
     						    obj1.put("Primary_Building_ID", wrklcbld);
     						    obj1.put("dsc_mtrc_lc_bldg_id", wrkdscmtrclcbldid);
@@ -253,7 +303,7 @@ public class DSCWMSVolume  {
     						    obj1.put("Count", avgcnt);
     						    obj1.put("thismonth", thismonth);
     						    obj1.put("processYYMM", thismy);
-    						    obj1.put("AvgVolume", volume);
+    						    obj1.put("PeriodValue", volume);
                              jsona.put(obj1); 
               		 		wrkdscmtrclcbldid = dscmtrclcbldid;
               		 		thruput.equals(blkthruput);
@@ -269,11 +319,11 @@ public class DSCWMSVolume  {
 					// TODO Auto-generated catch block
 					// e.printStackTrace();
 	                String msg="DataWarehouse DB Query Failed.";
-	                sb.append("{\"result\":\"FAILED\",\"resultCode\":200,\"message\":\""+msg+"\"");
+	                sb.append("{\"result\":\"FAILED\",\"resultCode\":200,\"message\":\""+msg+"\"}");
 	   	            rb=Response.ok(sb.toString()).build();
 	   	            return rb;
 				   }
-        //      System.out.println("Json object being sent is:"+jobj.toString());
+              System.out.println("Json object being sent is:"+jobj.toString());
 	         rb=Response.ok(jobj.toString()).build();
 	         if (conn != null) 
 	         {
@@ -282,7 +332,7 @@ public class DSCWMSVolume  {
 	      		  } catch(SQLException e)
 	      	      {//e.printStackTrace();
 		                String msg="DataWarehouse DB Query Failed.";
-		                sb.append("{\"result\":\"FAILED\",\"resultCode\":200,\"message\":\""+msg+"\"");
+		                sb.append("{\"result\":\"FAILED\",\"resultCode\":200,\"message\":\""+msg+"\"}");
 		   	            rb=Response.ok(sb.toString()).build();
 		   	            return rb;
 	      			  }
@@ -296,8 +346,9 @@ public class DSCWMSVolume  {
 		 
 		JSONObject jo = new JSONObject();
 		 String  param= " {'building':'" + bldid +"'}";	  
+		  System.out.println("Rest Call to url:"+theurl +" resource :wmsbuilding  param:"+param);
 		  jo=callrest(theurl,"wmsbuilding",param);			
-		 // System.out.println("Rest Call result is:"+jo.toString());
+		  System.out.println("Rest Call result is:"+jo.toString());
 	       if(jo.has("dsc_mtrc_lc_bldg_id")) 
       	 {
       	   try {
@@ -358,7 +409,7 @@ public class DSCWMSVolume  {
 		    		    url = null;
 		    			try {
 		    				url = new URL(theurl + resource);
-		    				//System.out.print("Before Rest call:"+url);		  
+		    				 System.out.println("Before Rest call:"+url);		  
 		    			} catch (MalformedURLException e1) {
 		    				// TODO Auto-generated catch block
 		    				//e1.printStackTrace();
@@ -380,7 +431,7 @@ public class DSCWMSVolume  {
 		    		        urlc.setAllowUserInteraction(false);
 
 		    		        //send query
-		    		          ps = null;
+		    		         // ps = null;
 		    				try {
 		    					ps = new PrintStream(urlc.getOutputStream());
 		    				} catch (IOException e1) {
@@ -402,7 +453,7 @@ public class DSCWMSVolume  {
 		    		          l = null;
 		    		         responseStrBuildera = new StringBuilder();
 
-
+                          //  System.out.println("buffer reader value is:"+br.toString());
 
 		    			        try {
 		    						while ((l=br.readLine())!=null) {

@@ -70,6 +70,7 @@ public class LoadStatus {
 					    dateparm +"'),0)) "+
 					    " and audp_success_ind=1";
  
+			  System.out.println("Sql for LoadStatus is:"+SQL);
 	          Statement stmt = conn.createStatement();
 
 			      // do starts here

@@ -37,7 +37,7 @@
         maxIdle="10" 
         maxWait="10000"        
         driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver"   
-               url="jdbc:sqlserver://DSCBISQLPROD;DatabaseName=DSC_DW_STG" 
+               url="jdbc:sqlserver://DSCBISQLDEV;DatabaseName=DSC_DW_STG" 
         username="sqluser"  
         password="sqluser" 
         removeAbandoned="true"
@@ -47,6 +47,6 @@
       
  
    <Environment name="mtrcurl" value="http://dscapidev/dscmtrc/api/v1/metric/" type="java.lang.String" override="false"/>
-  <Environment name="dwurl" value="http://localhost:8090/com.dsc.mtrc.rest/api/v1/dw" type="java.lang.String" override="false"/>
+  <Environment name="dwurl" value="http://localhost:8091/com.dsc.dw.rest/api/v1/dw" type="java.lang.String" override="false"/>
       
 </Context>
